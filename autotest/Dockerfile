@@ -1,20 +1,25 @@
-# Docker-in-Docker Fabric Test Container
-#
-# See: https://github.com/litong01/fabric-pilot
-#
-FROM docker:dind
+FROM busybox as downloader
 
-RUN set -eux; \
-    apk add --no-cache --update python3 bash \
-    nodejs nodejs-npm py-virtualenv go curl \
-    && curl -fsSL https://clis.ng.bluemix.net/install/linux | sh \
-    && ln -s /usr/bin/python3 /usr/bin/python \
-    && mkdir -p /opt/fabrictest \
-    && rm -rf /var/cache/apk/*
+RUN cd /tmp && wget -c https://github.com/hyperledger/cello/archive/master.zip && \
+    unzip master.zip
 
-ENV WORKDIR=/opt/fabrictest
-VOLUME /var/lib/docker
-EXPOSE 2375
+FROM circleci/node:latest-browsers as builder
 
-ENTRYPOINT ["dockerd-entrypoint.sh"]
-CMD []
+LABEL maintainer="github.com/hyperledger/cello"
+
+WORKDIR /usr/src/app/
+USER root
+COPY --from=downloader /tmp/cello-master/src/dashboard ./
+RUN yarn
+RUN yarn run build
+
+FROM nginx:1.15.12
+
+COPY --from=builder /usr/src/app/dist /usr/share/nginx/html
+COPY --from=downloader /tmp/cello-master/build_image/docker/common/dashboard/config-nginx.sh /
+RUN chmod +x /config-nginx.sh
+COPY --from=downloader /tmp/cello-master/build_image/docker/common/dashboard/default.conf.tmpl /etc/nginx/conf.d/default.conf.tmpl
+
+EXPOSE 80
+
+CMD ["bash", "-c", "/config-nginx.sh && nginx -g 'daemon off;'"]
