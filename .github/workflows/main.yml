@@ -27,6 +27,8 @@ jobs:
 
       - name: Start up kind k8s cluster
         uses: helm/kind-action@v1.2.0
+        with:
+          cluster_name: kind
 
       - name: Deploy metallb
         run: |
@@ -61,6 +63,9 @@ jobs:
       - name: Show kubectl command
         run: which kubectl
 
+      - name: Show k8s nodes
+        run: kubectl get nodes
+  
       - name: Wait for the controller to have the external IP
         run: |
           for ((x=0;x<30;x++)); do
