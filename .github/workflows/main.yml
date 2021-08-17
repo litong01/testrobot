@@ -65,6 +65,9 @@ jobs:
 
       - name: Show k8s nodes
         run: kubectl get nodes
+        
+      - name: Show kind clusters
+        run: kind get clusters
   
       - name: Wait for the controller to have the external IP
         run: |
